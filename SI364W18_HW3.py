@@ -19,7 +19,7 @@ app.config['SECRET_KEY'] = 'hard to guess string from si364'
 ## TODO 364: Create a database in postgresql in the code line below, and fill in your app's database URI. It should be of the format: postgresql://localhost/YOUR_DATABASE_NAME
 
 ## Your final Postgres database should be your uniqname, plus HW3, e.g. "jczettaHW3" or "maupandeHW3"
-app.config["SQLALCHEMY_DATABASE_URI"] = ""
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://localhost/svschouHW3"
 ## Provided:
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -27,6 +27,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 ##################
 ### App setup ####
 ##################
+manager = Manager(app)
 db = SQLAlchemy(app) # For database use
 
 
@@ -53,7 +54,14 @@ db = SQLAlchemy(app) # For database use
 
 ## Should have a __repr__ method that returns strings of a format like:
 #### {Tweet text...} (ID: {tweet id})
+class Tweet(db.Model):
+    __tablename__ = 'tweets'
+    tweet_id = db.Column(db.Integer, primary_key=True)
+    tweet_text = db.Column(db.String(280))
+    tweet_user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
 
+    def __repr__(self):
+        return "{'{}'} (ID: {}".format(self.tweet_text, self.tweet_id)
 
 # - User
 ## -- id (Integer, Primary Key)
@@ -64,6 +72,14 @@ db = SQLAlchemy(app) # For database use
 ## Should have a __repr__ method that returns strings of a format like:
 #### {username} | ID: {id}
 
+class User(db.Model):
+    __tablename__ = 'users'
+    user_id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), Unique=True)
+    display_name = db.Column(db.String(124))
+
+    def __repr__(self):
+        return "{} | ID: {}".format(self.username, self.user_id)
 
 ########################
 ##### Set up Forms #####
@@ -77,9 +93,20 @@ db = SQLAlchemy(app) # For database use
 
 # HINT: Check out index.html where the form will be rendered to decide what field names to use in the form class definition
 
+class TweetForm(FlaskForm):
+    text = StringField('Enter the text of the tweet (no more than 280 chars):', validators=[Required()])
+    username = StringField('Enter the username of the twitter user (no "@"!):', validators=[Required()])
+    display_name = StringField('Enter the display name for the twitter user (must be at least 2 words):', validators=[Required()])
+    submit = SubmitField('Submit')
 # TODO 364: Set up custom validation for this form such that:
 # - the twitter username may NOT start with an "@" symbol (the template will put that in where it should appear)
 # - the display name MUST be at least 2 words (this is a useful technique to practice, even though this is not true of everyone's actual full name!)
+    def validate_username(self, field):
+        if '@' == field.data[0]:
+            raise ValidationError("Your username was not valid because it started with '@'")
+    def validate_display_name(self, field):
+        if len(field.data.split()) < 2:
+            raise ValidationError("Your display_name was not valid because it was not at least 2 words")
 
 # TODO 364: Make sure to check out the sample application linked in the readme to check if yours is like it!
 
