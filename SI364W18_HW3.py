@@ -27,7 +27,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 ##################
 ### App setup ####
 ##################
-manager = Manager(app)
+#manager = Manager(app)
 db = SQLAlchemy(app) # For database use
 
 
@@ -75,7 +75,7 @@ class Tweet(db.Model):
 class User(db.Model):
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), Unique=True)
+    username = db.Column(db.String(64), unique=True)
     display_name = db.Column(db.String(124))
 
     def __repr__(self):
@@ -145,30 +145,52 @@ def internal_server_error(e):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # Initialize the form
-
+    form = TweetForm()
     # Get the number of Tweets
-
     # If the form was posted to this route,
     ## Get the data from the form
-
+    if form.validate_on_submit():
+        text = form.text.data
+        username = form.username.data
+        display_name = form.display_name.data
     ## Find out if there's already a user with the entered username
     ## If there is, save it in a variable: user
     ## Or if there is not, then create one and add it to the database
+        user = User.query.filter_by(username=username).first()
+        if user:
+            print("cool there's a username already")
+        else:
+            user = User(username=username,display_name=display_name)
+            db.session.add(user)
+            db.session.commit()
 
     ## If there already exists a tweet in the database with this text and this user id (the id of that user variable above...) ## Then flash a message about the tweet already existing
     ## And redirect to the list of all tweets
+        user_id = user.user_id
+
+        tweet = Tweet.query.filter_by(tweet_text=text, tweet_user_id=user_id).first()
+        if tweet:
+            redirect(url_for('see_all_tweets'))
 
     ## Assuming we got past that redirect,
     ## Create a new tweet object with the text and user id
     ## And add it to the database
     ## Flash a message about a tweet being successfully added
     ## Redirect to the index page
+        else:
+            tweet = Tweet(tweet_text=text, tweet_user_id=user_id)
+            db.session.add(tweet)
+            db.session.commit()
+
+            print("TWEET SUCCESSFULLY ADDED")
+            redirect(url_for('index'))
+    num_tweets = len(Tweet.query.all())
 
     # PROVIDED: If the form did NOT validate / was not submitted
     errors = [v for v in form.errors.values()]
     if len(errors) > 0:
         flash("!!!! ERRORS IN FORM SUBMISSION - " + str(errors))
-    return render_template('index.html',) # TODO 364: Add more arguments to the render_template invocation to send data to index.html
+    return render_template('index.html', form=form, num_tweets=num_tweets) # TODO 364: Add more arguments to the render_template invocation to send data to index.html
 
 @app.route('/all_tweets')
 def see_all_tweets():
@@ -177,16 +199,29 @@ def see_all_tweets():
     # HINT: Careful about what type the templating in all_tweets.html is expecting! It's a list of... not lists, but...
     # HINT #2: You'll have to make a query for the tweet and, based on that, another query for the username that goes with it...
 
+    tweets = Tweet.query.all()
+    all_tweets = []
+
+    for tweet in tweets:
+        user = User.query.filter_by(user_id=tweet.tweet_user_id).first()
+        all_tweets.append((tweet.tweet_text, user.username))
+
+    return render_template('all_tweets.html', all_tweets=all_tweets)
+
 
 @app.route('/all_users')
 def see_all_users():
     pass # Replace with code
     # TODO 364: Fill in this view function so it can successfully render the template all_users.html, which is provided.
+    users = User.query.all()
+
+    return render_template('all_users.html', users=users)
 
 # TODO 364
 # Create another route (no scaffolding provided) at /longest_tweet with a view function get_longest_tweet (see details below for what it should do)
 # TODO 364
 # Create a template to accompany it called longest_tweet.html that extends from base.html.
+
 
 # NOTE:
 # This view function should compute and render a template (as shown in the sample application) that shows the text of the tweet currently saved in the database which has the most NON-WHITESPACE characters in it, and the username AND display name of the user that it belongs to.
