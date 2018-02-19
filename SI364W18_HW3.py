@@ -226,12 +226,25 @@ def see_all_users():
 def get_longest_tweet():
     tweets = Tweet.query.all()
 
-    longest_tweet = [0,'',''] # length, tweet content, username
+    longest_tweet = [0,'','',''] # length, tweet content, username, display_name
 
     for tweet in tweets:
-        if len(tweet.tweet_text) > longest_tweet[0]:
+        tweet_len = 0 
+        for char in tweet.tweet_text:
+            if char != " ":
+                tweet_len += 1
+
+        if tweet_len > longest_tweet[0]:
             user = User.query.filter_by(user_id=tweet.tweet_user_id).first()
-            longest_tweet = (len(tweet.tweet_text),tweet.tweet_text, user.username)
+            longest_tweet = (tweet_len,tweet.tweet_text, user.username,user.display_name)
+
+        if tweet_len == longest_tweet[0]:
+            abc_tweet = sorted([tweet.tweet_text,longest_tweet[1]])[0]
+            tweet = Tweet.query.filter_by(tweet_text=abc_tweet).first()
+            user = User.query.filter_by(user_id=tweet.tweet_user_id).first()
+
+            longest_tweet = (tweet_len,tweet.tweet_text, user.username,user.display_name)
+
 
     return render_template('longest_tweet.html',longest_tweet=longest_tweet)
 
